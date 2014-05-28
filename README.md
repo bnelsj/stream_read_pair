@@ -5,6 +5,6 @@ simple project to stream a sorted bam and return all the reads sorted by read-na
 there are two implementations:
 
 1. stream_sort_pairs.py
-... a python implementation
+...a python implementation
 2. stream_sort_pairs
-... a c++ implemenation (not stable yet)
+...a c++ implemenation (not stable yet)
