@@ -1,11 +1,28 @@
 from optparse import OptionParser
 import pysam
 import pdb
+from sys import stdout
+import subprocess
 
 def fetch_all(b):
     for l in b.fetch(until_eof=True):
         yield l
-        
+
+def sam_str(r):
+    return "\t".join([r.qname,
+                     str(r.flag),
+                     str(r.rname+1),
+                     str(r.pos+1),
+                     str(r.mapq),
+                     r.cigarstring,
+                     r.rnext==-1 and "*" or str(r.rnext),
+                     r.rnext==-1 and "0" or str(r.pnext),
+                     str(r.tlen),
+                     r.seq,
+                     str(r.qual)]+["%s:%s"%(str(tag[0]),str(tag[1])) for tag in r.tags])
+                     
+
+
 class pairing_window(object):
 
     def __init__(self,wnd_size=100000):
@@ -45,8 +62,10 @@ class pairing_window(object):
             """
             ouput read
             """
-            print self.reads_by_name[read.qname]
-            print read
+            #stdout.write(self.reads_by_name[read.qname])
+            #stdout.write(read)
+            print sam_str(self.reads_by_name[read.qname])
+            print sam_str(read)
             #del self.reads_by_name[read.qname]
         else:
             """
@@ -67,7 +86,7 @@ if __name__=="__main__":
     opts.add_option('','--input_bam',dest='fn_bam')
     opts.add_option('','--window',dest='window', default=1000, type = int)
     (o, args) = opts.parse_args()
-
+    
     b = pysam.Samfile(o.fn_bam,'rb')
     
     pairing_obj = pairing_window() 
