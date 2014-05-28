@@ -8,3 +8,8 @@ there are two implementations:
   * a python implementation
 2. stream_sort_pairs
   * a c++ implemenation (not stable yet)
+
+**to clone run:**
+```bash
+git clone --recursive https://github.com/psudmant/stream_read_pair.git
+```
