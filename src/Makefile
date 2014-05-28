@@ -6,7 +6,7 @@ CFLAGS=-O3 -D_FILE_OFFSET_BITS=64
 
 BAMTOOLS_ROOT=../bamtools
 
-LIBS = -L./ -L$(BAMTOOLS_ROOT)/lib -ltabix -lz -lm
+LIBS = -L./ -L$(BAMTOOLS_ROOT)/lib -lz -lm
 INCLUDE = -I$(BAMTOOLS_ROOT)/src 
 
 all: ../bin/stream_sort_pairs
