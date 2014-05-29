@@ -25,13 +25,15 @@ def sam_str(r):
 
 class pairing_window(object):
 
-    def __init__(self,wnd_size=100000):
+    def __init__(self, n_pairs, wnd_size=100000):
         self.curr_contig = None
         self.wnd_size = wnd_size
         self.wnd_start = None
         self.wnd_end = None
         self.reads_by_pos = {}
         self.reads_by_name = {}
+        self.n_pairs = n_pairs
+        self.n_pairs_output = 0
     
     def clean_up_all(self):
         del self.reads_by_pos
@@ -66,6 +68,9 @@ class pairing_window(object):
             #stdout.write(read)
             print sam_str(self.reads_by_name[read.qname])
             print sam_str(read)
+            self.n_pairs_output +=1
+            if self.n_pairs_output == self.n_pairs:
+                exit(0)
             #del self.reads_by_name[read.qname]
         else:
             """
@@ -85,11 +90,12 @@ if __name__=="__main__":
     opts = OptionParser()
     opts.add_option('','--input_bam',dest='fn_bam')
     opts.add_option('','--window',dest='window', default=1000, type = int)
+    opts.add_option('','--n_pairs',dest='n_pairs', default=-1, type = int)
     (o, args) = opts.parse_args()
     
     b = pysam.Samfile(o.fn_bam,'rb')
     
-    pairing_obj = pairing_window() 
+    pairing_obj = pairing_window(n_pairs) 
     for read in fetch_all(b):
         pairing_obj.add_read(read)
 
