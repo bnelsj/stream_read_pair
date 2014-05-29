@@ -95,7 +95,7 @@ if __name__=="__main__":
     
     b = pysam.Samfile(o.fn_bam,'rb')
     
-    pairing_obj = pairing_window(n_pairs) 
+    pairing_obj = pairing_window(o.n_pairs) 
     for read in fetch_all(b):
         pairing_obj.add_read(read)
 
