@@ -3,6 +3,8 @@ import pysam
 import pdb
 from sys import stdout
 import subprocess
+import numpy as np
+import random
 
 def fetch_all(b):
     for l in b.fetch(until_eof=True):
@@ -19,20 +21,19 @@ def sam_str(r):
                      r.rnext==-1 and "0" or str(r.pnext),
                      str(r.tlen),
                      r.seq,
-                     str(r.qual)]+["%s:%s"%(str(tag[0]),str(tag[1])) for tag in r.tags])
+                     str(r.qual)]+[":".join([str(t) for t in tag]) for tag in r.tags])
                      
 
 
 class pairing_window(object):
 
-    def __init__(self, n_pairs, wnd_size=100000):
+    def __init__(self, wnd_size=100000):
         self.curr_contig = None
         self.wnd_size = wnd_size
         self.wnd_start = None
         self.wnd_end = None
         self.reads_by_pos = {}
         self.reads_by_name = {}
-        self.n_pairs = n_pairs
         self.n_pairs_output = 0
     
     def clean_up_all(self):
@@ -64,14 +65,9 @@ class pairing_window(object):
             """
             ouput read
             """
-            #stdout.write(self.reads_by_name[read.qname])
-            #stdout.write(read)
             print sam_str(self.reads_by_name[read.qname])
             print sam_str(read)
             self.n_pairs_output +=1
-            if self.n_pairs_output == self.n_pairs:
-                exit(0)
-            #del self.reads_by_name[read.qname]
         else:
             """
             add read 
@@ -83,20 +79,40 @@ class pairing_window(object):
         
         if read.pos > self.wnd_end:
             self.update_wnd(read.pos)
-
-
+        
 if __name__=="__main__":
 
     opts = OptionParser()
     opts.add_option('','--input_bam',dest='fn_bam')
     opts.add_option('','--window',dest='window', default=1000, type = int)
-    opts.add_option('','--n_pairs',dest='n_pairs', default=-1, type = int)
+    opts.add_option('','--n_pairs',dest='n_pairs', default=100000, type = int)
+    opts.add_option('','--subsample_reads',dest='subsample_reads', default=False, action="store_true")
+       
     (o, args) = opts.parse_args()
     
     b = pysam.Samfile(o.fn_bam,'rb')
     
-    pairing_obj = pairing_window(o.n_pairs) 
-    for read in fetch_all(b):
-        pairing_obj.add_read(read)
+    if o.subsample_reads:
+        contigs_to_consider = [str(i) for i in xrange(23)]
+        contigs_to_len = {contig:int(b.lengths[i]) for i, contig in enumerate(b.references) if contig in contigs_to_consider}
+        t = np.sum(np.array(contigs_to_len.values()))
+        
+        for contig, l in contigs_to_len.iteritems():
+            n_reads = int(o.n_pairs * (l / float(t)))
+            ps = sorted([random.randrange(l) for i in xrange(n_reads)])
+            
+            for p in ps:
+                pairing_obj = pairing_window() 
+                curr_c = pairing_obj.n_pairs_output
+                for read in b.fetch(contig, p, l):
+                    pairing_obj.add_read(read)
+                    if pairing_obj.n_pairs_output > curr_c:
+                        break
+
+                del pairing_obj
+    else:
+        pairing_obj = pairing_window() 
+        for read in fetch_all(b):
+            pairing_obj.add_read(read)
 
 
