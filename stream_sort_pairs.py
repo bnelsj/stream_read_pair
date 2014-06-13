@@ -121,11 +121,7 @@ if __name__=="__main__":
 
                 del pairing_obj
     else:
-<<<<<<< HEAD
         pairing_obj = pairing_window(wnd_size = o.window) 
-=======
-        pairing_obj = pairing_window()
->>>>>>> 7c21518f91298bf855d1c39e13b37f464b19ac6e
         for read in fetch_all(b):
             pairing_obj.add_read(read, o.binary)
 
