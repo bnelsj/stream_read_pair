@@ -24,7 +24,6 @@ def sam_str(r):
                      r.seq,
                      str(r.qual)]+[":".join([str(t) for t in tag]) for tag in r.tags]+["QS:%d"%(r.qstart),"QE:%d"%(r.qend)])
                      
-
 class pairing_window(object):
 
     def __init__(self, wnd_size=100000):
