@@ -68,8 +68,8 @@ class pairing_window(object):
                 outstream.write(self.reads_by_name[read.qname])
                 outstream.write(read)
             else:
-                outstream.write(sam_str(self.reads_by_name[read.qname]))
-                outstream.write(sam_str(read))
+                outstream.write(sam_str(self.reads_by_name[read.qname]) + '\n')
+                outstream.write(sam_str(read) + '\n')
             self.n_pairs_output +=1
         else:
             """
