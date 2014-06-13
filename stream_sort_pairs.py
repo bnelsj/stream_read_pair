@@ -84,7 +84,7 @@ if __name__=="__main__":
 
     opts = OptionParser()
     opts.add_option('','--input_bam',dest='fn_bam')
-    opts.add_option('','--window',dest='window', default=1000, type = int)
+    opts.add_option('','--window',dest='window', default=100000, type = int)
     opts.add_option('','--n_pairs',dest='n_pairs', default=100000, type = int)
     opts.add_option('','--subsample_reads',dest='subsample_reads', default=False, action="store_true")
        
@@ -102,7 +102,7 @@ if __name__=="__main__":
             ps = sorted([random.randrange(l) for i in xrange(n_reads)])
             
             for p in ps:
-                pairing_obj = pairing_window() 
+                pairing_obj = pairing_window(wnd_size = o.window) 
                 curr_c = pairing_obj.n_pairs_output
                 for read in b.fetch(contig, p, l):
                     pairing_obj.add_read(read)
@@ -111,7 +111,7 @@ if __name__=="__main__":
 
                 del pairing_obj
     else:
-        pairing_obj = pairing_window() 
+        pairing_obj = pairing_window(wnd_size = o.window) 
         for read in fetch_all(b):
             pairing_obj.add_read(read)
 
