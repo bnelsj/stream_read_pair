@@ -11,6 +11,7 @@ def fetch_all(b):
         yield l
 
 def sam_str(r):
+    
     return "\t".join([r.qname,
                      str(r.flag),
                      str(r.rname+1),
@@ -21,9 +22,8 @@ def sam_str(r):
                      r.rnext==-1 and "0" or str(r.pnext),
                      str(r.tlen),
                      r.seq,
-                     str(r.qual)]+[":".join([str(t) for t in tag]) for tag in r.tags])
+                     str(r.qual)]+[":".join([str(t) for t in tag]) for tag in r.tags]+["QS:%d"%(r.qstart),"QE:%d"%(r.qend)])
                      
-
 
 class pairing_window(object):
 
@@ -51,9 +51,9 @@ class pairing_window(object):
                 del self.reads_by_pos[self.wnd_start]
             self.wnd_start+=1
         
-    def add_read(self, read):
+    def add_read(self, read, binary):
         """
-        reset 
+        reset
         """
         if read.rname != self.curr_contig:
             self.clean_up_all()
@@ -65,8 +65,12 @@ class pairing_window(object):
             """
             ouput read
             """
-            print sam_str(self.reads_by_name[read.qname])
-            print sam_str(read)
+            if binary:
+                outstream.write(self.reads_by_name[read.qname])
+                outstream.write(read)
+            else:
+                outstream.write(sam_str(self.reads_by_name[read.qname]))
+                outstream.write(sam_str(read))
             self.n_pairs_output +=1
         else:
             """
@@ -87,16 +91,22 @@ if __name__=="__main__":
     opts.add_option('','--window',dest='window', default=100000, type = int)
     opts.add_option('','--n_pairs',dest='n_pairs', default=100000, type = int)
     opts.add_option('','--subsample_reads',dest='subsample_reads', default=False, action="store_true")
-       
+    opts.add_option('','--binary', action='store_true', default=False, help='Write to stream in bam format')
+
     (o, args) = opts.parse_args()
-    
-    b = pysam.Samfile(o.fn_bam,'rb')
-    
+
+    b = pysam.Samfile(o.fn_bam, 'rb')
+
+    if o.binary:
+        outstream = pysam.Samfile('/dev/stdout', 'wb', template=b)
+    else:
+        outstream = open('/dev/stdout', 'w')
+
     if o.subsample_reads:
         contigs_to_consider = [str(i) for i in xrange(23)]
         contigs_to_len = {contig:int(b.lengths[i]) for i, contig in enumerate(b.references) if contig in contigs_to_consider}
         t = np.sum(np.array(contigs_to_len.values()))
-        
+      
         for contig, l in contigs_to_len.iteritems():
             n_reads = int(o.n_pairs * (l / float(t)))
             ps = sorted([random.randrange(l) for i in xrange(n_reads)])
@@ -104,15 +114,21 @@ if __name__=="__main__":
             for p in ps:
                 pairing_obj = pairing_window(wnd_size = o.window) 
                 curr_c = pairing_obj.n_pairs_output
+
                 for read in b.fetch(contig, p, l):
-                    pairing_obj.add_read(read)
+                    pairing_obj.add_read(read, o.binary)
                     if pairing_obj.n_pairs_output > curr_c:
                         break
 
                 del pairing_obj
     else:
+<<<<<<< HEAD
         pairing_obj = pairing_window(wnd_size = o.window) 
+=======
+        pairing_obj = pairing_window()
+>>>>>>> 7c21518f91298bf855d1c39e13b37f464b19ac6e
         for read in fetch_all(b):
-            pairing_obj.add_read(read)
+            pairing_obj.add_read(read, o.binary)
 
-
+    b.close()
+    outstream.close()
