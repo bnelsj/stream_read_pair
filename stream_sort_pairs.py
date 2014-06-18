@@ -5,6 +5,7 @@ from sys import stdout
 import subprocess
 import numpy as np
 import random
+import pdb 
 
 def fetch_all(b):
     for l in b.fetch(until_eof=True):
@@ -12,7 +13,7 @@ def fetch_all(b):
 
 def sam_str(r):
     
-    return "\t".join([r.qname,
+    return "%s\n"%"\t".join([r.qname,
                      str(r.flag),
                      str(r.rname+1),
                      str(r.pos+1),
@@ -102,13 +103,25 @@ if __name__=="__main__":
         outstream = open('/dev/stdout', 'w')
 
     if o.subsample_reads:
-        contigs_to_consider = [str(i) for i in xrange(23)]
+        contigs_to_consider = [ref for ref in b.references if "Un" not in ref and "hap" not in ref and "random" not in ref]
         contigs_to_len = {contig:int(b.lengths[i]) for i, contig in enumerate(b.references) if contig in contigs_to_consider}
+        contigs_to_start = {}
+        
+        for contig in contigs_to_consider:
+            read = None
+            for r in b.fetch(contig):
+                read = r
+                break
+            if read == None:
+                del contigs_to_len[contig]
+            else:
+                contigs_to_start[contig] = read.pos
+
         t = np.sum(np.array(contigs_to_len.values()))
       
         for contig, l in contigs_to_len.iteritems():
             n_reads = int(o.n_pairs * (l / float(t)))
-            ps = sorted([random.randrange(l) for i in xrange(n_reads)])
+            ps = sorted([random.randrange(contigs_to_start[contig], l) for i in xrange(n_reads)])
             
             for p in ps:
                 pairing_obj = pairing_window(wnd_size = o.window) 
@@ -118,7 +131,6 @@ if __name__=="__main__":
                     pairing_obj.add_read(read, o.binary)
                     if pairing_obj.n_pairs_output > curr_c:
                         break
-
                 del pairing_obj
     else:
         pairing_obj = pairing_window(wnd_size = o.window) 
