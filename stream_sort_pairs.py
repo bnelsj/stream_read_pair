@@ -85,7 +85,7 @@ class pairing_window(object):
             self.update_wnd(read.pos)
        
 def is_good_read(read):
-    if read.is_proper_pair and not read.is_secondary and not read.is_qcfail and not read.is_duplicate and not read.is_unmapped:
+    if not read.is_secondary and not read.is_qcfail and not read.is_duplicate and not read.is_unmapped and read.tid != 0:
         return True
     else:
         return False
