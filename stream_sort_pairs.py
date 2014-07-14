@@ -5,6 +5,7 @@ from sys import stdout
 import subprocess
 import numpy as np
 import random
+import pdb 
 
 def fetch_all(b):
     for l in b.fetch(until_eof=True):
@@ -12,7 +13,7 @@ def fetch_all(b):
 
 def sam_str(r):
     
-    return "\t".join([r.qname,
+    return "%s\n"%"\t".join([r.qname,
                      str(r.flag),
                      str(r.rname+1),
                      str(r.pos+1),
@@ -82,13 +83,19 @@ class pairing_window(object):
         
         if read.pos > self.wnd_end:
             self.update_wnd(read.pos)
-        
+       
+def is_good_read(read):
+    if not read.is_secondary and not read.is_qcfail and not read.is_duplicate and not read.is_unmapped:
+        return True
+    else:
+        return False
+ 
 if __name__=="__main__":
 
     opts = OptionParser()
     opts.add_option('','--input_bam',dest='fn_bam')
     opts.add_option('','--window',dest='window', default=100000, type = int)
-    opts.add_option('','--n_pairs',dest='n_pairs', default=100000, type = int)
+    opts.add_option('','--n_samples',dest='n_samples', default=100000, type = int)
     opts.add_option('','--subsample_reads',dest='subsample_reads', default=False, action="store_true")
     opts.add_option('','--binary', action='store_true', default=False, help='Write to stream in bam format')
 
@@ -102,28 +109,41 @@ if __name__=="__main__":
         outstream = open('/dev/stdout', 'w')
 
     if o.subsample_reads:
-        contigs_to_consider = [str(i) for i in xrange(23)]
+        contigs_to_consider = [ref for ref in b.references if "Un" not in ref and "hap" not in ref and "random" not in ref]
         contigs_to_len = {contig:int(b.lengths[i]) for i, contig in enumerate(b.references) if contig in contigs_to_consider}
+        contigs_to_start = {}
+        
+        for contig in contigs_to_consider:
+            read = None
+            for r in b.fetch(contig):
+                read = r
+                break
+            if read == None:
+                del contigs_to_len[contig]
+            else:
+                contigs_to_start[contig] = read.pos
+
         t = np.sum(np.array(contigs_to_len.values()))
       
         for contig, l in contigs_to_len.iteritems():
-            n_reads = int(o.n_pairs * (l / float(t)))
-            ps = sorted([random.randrange(l) for i in xrange(n_reads)])
+            n_reads = int(o.n_samples * (l / float(t)))
+            ps = sorted([random.randrange(contigs_to_start[contig], l) for i in xrange(n_reads)])
             
             for p in ps:
                 pairing_obj = pairing_window(wnd_size = o.window) 
                 curr_c = pairing_obj.n_pairs_output
 
                 for read in b.fetch(contig, p, l):
-                    pairing_obj.add_read(read, o.binary)
-                    if pairing_obj.n_pairs_output > curr_c:
-                        break
-
+                    if is_good_read(read):
+                        pairing_obj.add_read(read, o.binary)
+                        if pairing_obj.n_pairs_output > curr_c + 100:
+                            break
                 del pairing_obj
     else:
         pairing_obj = pairing_window(wnd_size = o.window) 
         for read in fetch_all(b):
-            pairing_obj.add_read(read, o.binary)
+            if is_good_read(read):
+                pairing_obj.add_read(read, o.binary)
 
     b.close()
     outstream.close()
