@@ -84,8 +84,8 @@ class pairing_window(object):
         if read.pos > self.wnd_end:
             self.update_wnd(read.pos)
        
-def is_good_read(read):
-    if not read.is_secondary and not read.is_qcfail and not read.is_duplicate and not read.is_unmapped:
+def is_good_read(read, bamfile, contigs_to_consider):
+    if not read.is_secondary and not read.is_qcfail and not read.is_duplicate and not read.is_unmapped and bamfile.getrname(read.tid) in contigs_to_consider:
         return True
     else:
         return False
@@ -93,13 +93,21 @@ def is_good_read(read):
 if __name__=="__main__":
 
     opts = OptionParser()
-    opts.add_option('','--input_bam',dest='fn_bam')
+    opts.add_option('','--input_bam',dest='fn_bam', default='')
+    opts.add_option('','--include_chrs', default='', help='list of chrs to consider separated by :')
     opts.add_option('','--window',dest='window', default=100000, type = int)
     opts.add_option('','--n_samples',dest='n_samples', default=100000, type = int)
     opts.add_option('','--subsample_reads',dest='subsample_reads', default=False, action="store_true")
     opts.add_option('','--binary', action='store_true', default=False, help='Write to stream in bam format')
 
     (o, args) = opts.parse_args()
+
+    if o.fn_bam == '':
+        print('Must specify input bam')
+        sys.exit(1)
+    if o.include_chrs == '':
+        print('Must specify chrs to consider')
+        sys.exit(1)
 
     b = pysam.Samfile(o.fn_bam, 'rb')
 
@@ -108,8 +116,12 @@ if __name__=="__main__":
     else:
         outstream = open('/dev/stdout', 'w')
 
+    contigs_to_consider = o.include_chrs.split(':')
+
+    if not any(map(lambda x: x.startswith('chr'), b.references)):
+        contigs_to_consider = map(lambda x: x.replace('chr', ''), contigs_to_consider)
+
     if o.subsample_reads:
-        contigs_to_consider = [ref for ref in b.references if "Un" not in ref and "hap" not in ref and "random" not in ref]
         contigs_to_len = {contig:int(b.lengths[i]) for i, contig in enumerate(b.references) if contig in contigs_to_consider}
         contigs_to_start = {}
         
@@ -134,7 +146,7 @@ if __name__=="__main__":
                 curr_c = pairing_obj.n_pairs_output
 
                 for read in b.fetch(contig, p, l):
-                    if is_good_read(read):
+                    if is_good_read(read, b, contigs_to_consider):
                         pairing_obj.add_read(read, o.binary)
                         if pairing_obj.n_pairs_output > curr_c + 100:
                             break
@@ -142,7 +154,7 @@ if __name__=="__main__":
     else:
         pairing_obj = pairing_window(wnd_size = o.window) 
         for read in fetch_all(b):
-            if is_good_read(read):
+            if is_good_read(read, b, contigs_to_consider):
                 pairing_obj.add_read(read, o.binary)
 
     b.close()
